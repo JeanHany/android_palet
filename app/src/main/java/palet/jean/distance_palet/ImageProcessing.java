@@ -24,9 +24,14 @@ import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static org.opencv.core.Core.circle;
+import static org.opencv.core.Core.clipLine;
+import static org.opencv.core.Core.line;
+import static org.opencv.core.Core.magnitude;
 import static org.opencv.core.Core.rectangle;
 import static org.opencv.imgproc.Imgproc.approxPolyDP;
 import static org.opencv.imgproc.Imgproc.blur;
@@ -128,8 +133,6 @@ public class ImageProcessing extends Activity implements CameraBridgeViewBase.Cv
         MatOfPoint2f center = new MatOfPoint2f();
         MatOfFloat radius = new MatOfFloat( contours.size() );
 
-
-
         Log.i(TAG, "Size contour :" + Integer.toString(contours.size()));
         List<MatOfPoint2f> newContours = new ArrayList<MatOfPoint2f>();
         for(MatOfPoint point : contours) {
@@ -160,14 +163,43 @@ public class ImageProcessing extends Activity implements CameraBridgeViewBase.Cv
         boundRect.fromArray(rect_array);
         /// Draw polygonal contour + bonding rects + circles
         Mat drawing = new Mat( threshold_output.size(), CvType.CV_8UC3 );
+        Scalar color = new Scalar( 180, 50, 60 );
+        Integer[] dista = new Integer[radius.toArray().length];
+        ArrayList<Double> aire = new ArrayList<Double>(radius.toArray().length);
+        MatOfFloat distance = new MatOfFloat();
+
         for( int i = 0; i< contours.size(); i++ )
         {
-            Scalar color = new Scalar( 180, 50, 60 );
             drawContours( drawing, newContours_poly, i, color, 1, 8, new MatOfInt4(), 0, new Point() );
             rectangle( drawing, boundRect.toArray()[i].tl(), boundRect.toArray()[i].br(), color, 2, 8, 0 );
             circle( drawing, center.toArray()[i], (int)radius.toArray()[i], color, 2, 8, 0 );
         }
 
-        return drawing;
+        Point[] point_centre = center.toArray();
+        float[] point_radius = radius.toArray();
+
+        for(int i = 0; i< point_centre.length; i++ ){
+            aire.add(point_radius[i]*Math.PI);
+        }
+        double min_aire = Collections.min(aire);
+        int index = aire.indexOf(min_aire);
+        MatOfFloat metre = new MatOfFloat(point_radius[index]);
+        for(int i = 0; i< point_centre.length; i++ ) {
+            magnitude(metre, center, distance);
+        }
+        float[] dist = distance.toArray();
+        ArrayList<Float> array_dist = new ArrayList<Float>();
+        for(int i = 0; i < dist.length; i++){
+            array_dist.add(dist[i] - point_radius[i]);
+        }
+
+        float min_dist = Collections.min(array_dist);
+        int index1 = array_dist.indexOf(min_dist);
+
+        Point x = center.toArray()[index];
+        Point y = center.toArray()[index1];
+        line(src_gray, x, y, color);
+
+        return src_gray;
     }
 }
